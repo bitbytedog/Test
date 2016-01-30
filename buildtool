@@ -262,7 +262,7 @@ require_clean_work_tree () {
         echo >&2 "cannot $1: your workspace contains untracked files"
         for file in "${untracked[@]}"
         do
-            echo >&2 "\t$file"
+            echo >&2 "    $file"
         done
         err=1
     fi
@@ -283,7 +283,7 @@ require_changes_pushed () {
         echo >&2 "cannot $1: your local repo contains local commits that have not been pushed"
         for commit in "${commits[@]}"
         do
-            echo >&2 "\t$commit"
+            echo >&2 "    $commit"
         done
         err=1
     fi
