@@ -253,10 +253,7 @@ require_clean_work_tree () {
         err=1
     fi
 
-    oIFS=$IFS
-    IFS="\n"
-    untracked=(`git ls-files --exclude-standard --others`)
-    IFS=$oIFS
+    IFS=$'\n' command eval 'untracked=(`git ls-files --exclude-standard --others`)'
     if test ${#untracked[@]} -gt 0
     then
         echo >&2 "cannot $1: your workspace contains untracked files"
@@ -274,10 +271,7 @@ require_clean_work_tree () {
 }
 
 require_changes_pushed () {
-    oIFS=$IFS
-    IFS="\n"
-    commits=(`git log --oneline master ^remotes/origin/master`)
-    IFS=$oIFS
+    IFS=$'\n' command eval 'commits=(`git log --oneline master ^remotes/origin/master`)'
     if test ${#commits[@]} -gt 0
     then
         echo >&2 "cannot $1: your local repo contains local commits that have not been pushed"
