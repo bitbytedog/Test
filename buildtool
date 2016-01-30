@@ -421,6 +421,8 @@ if test x$release != x ; then
     info "checking for clean workspace ..."
     require_clean_work_tree release
 
+    info "checking for coomits that haven't been pushed to origin/master ..."
+    require_changes_pushed release
 fi
 
 if test x$pristine = xyes ; then
