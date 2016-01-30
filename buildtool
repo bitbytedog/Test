@@ -270,6 +270,24 @@ require_clean_work_tree () {
     fi
 }
 
+require_changes_pushed () {
+    commits=(`git log --oneline master ^remotes/origin/master`)
+    if test ${#commits[@]} -gt 0
+    then
+        echo >&2 "cannot $1: your local repo contains local commits that have not been pushed"
+        for commit in "${commits[@]}"
+        do
+            echo >&2 "\t$commit"
+        done
+        err=1
+    fi
+
+    if [ $err = 1 ]
+    then
+        die "Please push them."
+    fi
+}
+
 #===================================================================
 
 test x$xset = xyes && set -x
