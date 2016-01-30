@@ -1,0 +1,452 @@
+#!/bin/sh
+
+VERSION=2.011
+CONFIG_SHELL=/bin/sh
+export CONFIG_SHELL
+MAKE=${MAKE:=make}
+ARGS="$@"
+
+MAKES="`which make 2> /dev/null` `which gmake 2> /dev/null` /bin/make \
+        /usr/bin/make /usr/local/bin/make /opt/csw/bin/gmake /opt/sfw/bin/gmake"
+
+ECHO_E=`echo -e`
+if test x$ECHO_E = 'x-e' ; then
+    ECHO_E=echo
+else
+    ECHO_E="echo -e"
+fi
+
+for m in $MAKES; do
+    if $m --version 2>&1 | grep "^GNU" > /dev/null ; then
+    MAKE=$m
+    break
+    fi
+done
+
+USER=`/usr/bin/id -un`
+
+die ()
+{
+    $ECHO_E $progname: error: "$@" >&2
+    exit 1
+}
+
+warn ()
+{
+    $ECHO_E $progname: warning: "$@" >&2
+}
+
+info ()
+{
+    $ECHO_E $progname: "$@" >&1
+}
+
+progname=`basename $0`
+topdir=`dirname $0`
+topdir=`cd $topdir && pwd`
+product=`basename $PWD`
+
+#
+# This script can remove things - make sure it starts in the
+# same directory as this script to limit any potential damage
+#
+cd $topdir
+
+#===================================================================
+#
+# Argument processing copied from configure
+#
+
+ac_prev=
+ac_argv=
+for ac_option
+do
+  # If the previous option needs an argument, assign it.
+  if test -n "$ac_prev"; then
+    eval "$ac_prev=\$ac_option"
+    ac_prev=
+    continue
+  fi
+
+  ac_optarg=`expr "x$ac_option" : 'x[^=]*=\(.*\)'`
+
+  # Accept the important Cygnus configure options, so we can diagnose typos.
+
+  case $ac_option in
+
+  -configure | --configure | --configur | --configu | --config | --confi \
+  | --conf | --con | --co | -C )
+    configure=yes ; ac_option="" ;;
+
+  -force | --force | --forc | --for | --fo | --f | -f)
+    force=yes ; ac_option="" ;;
+
+  -generate | --generate | --generat | --genera | --gener | --gene | --gen \
+  | --ge | --g | -g )
+    generate=yes ; ac_option="" ;;
+
+  -i | -install | --install | --instal | --insta | --inst | --ins | --in | --i)
+    install=yes ; ac_option="" ;;
+
+  -m | -make | --make | --mak | --ma | --m)
+    make=yes ; ac_option="" ;;
+
+  -clean | --clean | --clea | --cle | --cl | --c | -c)
+    clean=yes ; ac_option="" ;;
+
+  -pristine | --pristine | --pristin | --pristi | --prist | --pris | --pri | --pr | -P)
+    pristine=yes ; ac_option="" ;;
+
+  -help | --help | --hel | --he | -h)
+    ac_init_help=long ;;
+
+  -log | --log | --lo | --l | -l )
+    ac_prev=logfile ; ac_option="" ;;
+
+  -log=* | --log=* | --lo=* | --l=* | -l=* )
+    logfile=$ac_optarg ; ac_option="" ;;
+
+  -p | -package | --package | --packag | --packa | --pack | --pac | --pa | --p)
+    ac_option="" ; ac_prev=package ;;
+  -package=* | --package=* | --packag=* | --packa=* | --pack=* | --pac=* | --pa=* | --p=*)
+    ac_option="" ; package=$ac_optarg ;;
+
+  -q | -quiet | --quiet | --quie | --qui | --qu | --q \
+  | -silent | --silent | --silen | --sile | --sil)
+    silent=yes ;;
+
+  -u | -update | --update | --updat | --upda | --upd | --up | --u)
+    ac_prev=update ; ac_option="" ;;
+
+  -update=* | --update=* | --updat=* | --upda=* | --upd=* | --up=* | --u=*)
+    update=$ac_optarg ; ac_option="" ;;
+
+  -R | -release | --release | --release | --releas | --relea | --rele | --rel | --re | --r )
+    ac_option="" ; ac_prev=release ;;
+  -release=* | --release=* | --releas=* | --relea=* | --rele=* | --rel=* | --re=* | --r=*)
+    ac_option="" ; release=$ac_optarg ;;
+
+  -v | -verbose | --verbose | --verbos | --verbo | --verb)
+    verbose=yes ; ac_option="" ;;
+
+  -version | --version | --versio | --versi | --vers | -V)
+    version=yes ;;
+
+  -test | --test | --tes | --te | --t | -t)
+    testing=yes ;;
+
+  -x | -xset | --xset | --xse | --xs | --x )
+    xset=yes ; ac_option="" ;;
+
+  -*) die "unrecognized option: \`$ac_option'
+Try \`$0 --help' for more information" ;;
+
+  *=*)
+    ac_envvar=`expr "x$ac_option" : 'x\([^=]*\)='`
+    # Reject names that are not valid shell variable names.
+    case $ac_envvar in #(
+      '' | [0-9]* | *[!_$as_cr_alnum]* )
+      die "invalid variable name: \`$ac_envvar'" ;;
+    esac
+    eval $ac_envvar=\$ac_optarg
+    export $ac_envvar ;;
+
+  esac
+  ac_argv="$ac_argv $ac_option"
+done
+
+if test -n "$ac_prev"; then
+  ac_option=--`echo $ac_prev | sed 's/_/-/g'`
+  { echo "$as_me: error: missing argument to $ac_option" >&2
+   { (exit 1); exit 1; }; }
+fi
+
+#
+# Report the --help message.
+#
+if test "$ac_init_help" = "long"; then
+  # Omit some internal or obsolete options to make the list less imposing.
+  # This message is too long to be a string in the A/UX 3.1 sh.
+  cat <<_ACEOF
+
+\`$progname' $product application build system
+
+Usage: $0 [OPTION]... [VAR=VALUE]...
+
+To assign environment variables (e.g., CC, CFLAGS...), specify them as
+VAR=VALUE.
+
+Defaults for the options are specified in brackets.
+
+Configuration:
+  -h, --help               display this help and exit
+  -c, --clean              invoke make to clean last build
+  -C, --configure          invoke "configure" script to create architecture
+                           specific build tree, "Makefile" and makefile
+                           dependencies.
+  -f, --force              use with --generate to force a reconfiguration
+  -g, --generate           create autotool "Makefile.in" templates,
+                           "config.h.in" template and "configure" script.
+  -i, --install            invoke "make" to install artifacts
+  -l FILE, --log=FILE      copy output to log FILE
+  -m, --make               invoke "make" to build artifacts
+  -P, --pristine           invoke make to remove all generated files
+  -R, --release=VERSION    create a release VERSION - nothing is built, the
+                           state of the local repo is confirmed:
+                            1. local branch must be master
+                            2. all files must be committed
+                            3. master must be up to date with origin/master
+                            4. VERSION must be of form x.x.x
+                            5. VERSION must be unique
+                           Necessary files are updated, and commited,
+                           a branch is created and pushed to the master.
+                           The local repo remains on the master branch.
+  -v, --verbose            very verbose tracing
+  -V, --version            display version information and exit
+  -q, --quiet, --silent    do not print \`checking...' messages
+  -x, --xset               turn on "set -x" script tracing
+
+_ACEOF
+
+    cat << __EOF
+
+NOTES:
+    $progname invokes git on the remote repo when performing a release build.
+    To allow for unattended operation set the remote repo username and password
+    into the git config file with the following commands:
+
+        git config --global user.name "Your Name Here"
+        git config --global user.email "GitHub User Email Here"
+        git config --global credential.helper cache
+        git config --global credential.helper 'cache --timeout=31536000'
+
+    The passord you use to clone or update the repo will be cached for 1yr
+    allowing the build.sh to tag future release builds.
+
+    DEV builds are only tagged locally
+__EOF
+
+    exit 1
+fi
+
+#===================================================================
+# git porcelain
+
+require_clean_work_tree () {
+    # Update the index
+    git update-index -q --ignore-submodules --refresh
+    err=0
+
+    # Disallow unstaged changes in the working tree
+    if ! git diff-files --quiet --ignore-submodules --
+    then
+        echo >&2 "cannot $1: you have unstaged changes."
+        git diff-files --name-status -r --ignore-submodules -- >&2
+        err=1
+    fi
+
+    # Disallow uncommitted changes in the index
+    if ! git diff-index --cached --quiet HEAD --ignore-submodules --
+    then
+        echo >&2 "cannot $1: your index contains uncommitted changes."
+        git diff-index --cached --name-status -r --ignore-submodules HEAD -- >&2
+        err=1
+    fi
+
+    untracked=(`git ls-files --exclude-standard --others`)
+    if test ${#untracked[@]} -gt 0
+    then
+        echo >&2 "cannot $1: your workspace contains untracked files"
+        for file in "${untracked[@]}"
+        do
+            echo >&2 "\t$file"
+        done
+        err=1
+    fi
+
+    if [ $err = 1 ]
+    then
+        die "Please commit or stash them."
+    fi
+}
+
+#===================================================================
+
+test x$xset = xyes && set -x
+
+# save stdout stderr
+exec 6>&1
+exec 7>&2
+
+# direct stdout and stderr to pipe
+if test x$logfile != x ; then
+
+    touch $logfile
+    if test x$verbose = xyes -a x$silent != xyes ; then
+    trap "exec >&-; exec 2>&- ; sleep 0 ; rm -f $HOME/.bt-$$.pipe" EXIT
+    rm -f $HOME/.bt-$$.pipe
+    mkfifo -m 600 $HOME/.bt-$$.pipe
+    (tee $logfile) < $HOME/.bt-$$.pipe &
+    exec > $HOME/.bt-$$.pipe
+    else
+    exec > $logfile
+    fi
+    sleep 0
+    exec 2>&1
+fi
+
+#
+# check steps
+#
+if test x$clean = xyes ; then
+    if test x$generate != x -o x$configure != x -o x$make != x -o \
+            x$install != x  ; then
+    die "--clean cannot be specified with --generate, --configure \
+        --make or --install"
+    fi
+fi
+
+if test x$pristine = xyes ; then
+    if test x$generate != x -o x$configure != x -o x$make != x -o \
+            x$install != x  ; then
+    die "--pristine cannot be specified with --generate, --configure \
+        --make or --install"
+    fi
+fi
+
+configure_ac="./configure.ac"
+
+autotool_file_artifacts="
+    $topdir/aclocal.m4
+    $topdir/configure
+    $topdir/Makefile.in
+    $topdir/config.h.in
+    $topdir/config.h.in~
+"
+
+autotool_dir_artifacts="
+    $topdir/autom4te.cache
+    $topdir/m4
+    $topdir/config
+"
+
+if test -f ${configure_ac}; then
+    if test x$install = xyes ; then
+        if test ! -f Makefile ; then
+            make=yes
+        fi
+    fi
+
+    if test x$make = xyes ; then
+        if test ! -f Makefile ; then
+            configure=yes
+        fi
+    fi
+
+    if test x$configure = xyes ; then
+        if test ! -f configure -o configure -ot configure.ac ; then
+            generate=yes
+        fi
+    fi
+else
+    if test x$install = xyes ; then
+        if test ! -f Makefile ; then
+            die "no Makefile run --configure first"
+        fi
+    else
+        if test x$make = xyes ; then
+            if test ! -f Makefile ; then
+                die "no Makefile run --configure first"
+            fi
+        else
+            if test ! -f ${configure_ac}; then
+                die "no configure.ac in current directory - are you running $progname from the top source directory?"
+            fi
+        fi
+    fi
+fi
+
+if test x$generate = xyes ; then
+    if test x$force = xyes -o ! -f configure -o configure -ot configure.ac ; then
+        autoreconf -fvi || die autoreconf
+    fi
+fi
+
+if test x$configure = xyes ; then
+    eval $CONFIG_SHELL ./configure $ac_argv $CONFIG_OPTS || die configure
+fi
+
+if test x$make = xyes ; then
+    eval $MAKE $ac_argv || die $MAKE
+fi
+
+if test x$install = xyes ; then
+    eval $MAKE $ac_argv install || die $MAKE
+fi
+
+if test x$release != x ; then
+    result=`echo $release | sed  -n '/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$/p'`
+    if test x$release != x$result ; then
+        die "invalid release string $release\nUse x.y.z where x,y, and z and integers"
+    fi
+
+    info "checking current branch is master ..."
+
+    git branch | while read line
+    do
+        case $line in
+        \*\ master) break ;;
+        \*\ *) die "repository is currently on the branch ${line#\*\ }\nReleasing can only be done from the master" ;;
+        esac
+    done || exit 1
+
+    info "checking for clean workspace ..."
+    require_clean_work_tree release
+
+fi
+
+if test x$pristine = xyes ; then
+    test -f Makefile || die "No Makefile, run --configure before --pristine"
+    $MAKE distclean
+    rm -rf $autotool_dir_artifacts
+    rm -f $autotool_file_artifacts
+    find $topdir -name Makefile.in -exec rm -f {} \;
+    rm $product.rel
+    exit 0
+fi
+
+if test x$clean = xyes ; then
+    test -f Makefile || die "No Makefile, run --configure before --clean"
+    $MAKE clean
+    exit 0
+fi
+
+#
+# Create a unique build number
+BUILDNUM=0
+if test -f .buildnum ; then
+    BUILDNUM=`cat .buildnum`
+fi
+BUILDNUM=`expr $BUILDNUM + 1`
+echo $BUILDNUM > .buildnum
+export BUILDNUM
+
+BUILDVERSION=`cat VERSION`
+export BUILDVERSION
+
+if test x$opt_r = xyes ; then
+    RELSTR="Tracking Application v${BUILDVERSION} Build ${BUILDNUM}"
+    echo $RELSTR > $product.rel
+    #
+    # Annotated tag pushed to origin
+    #
+    git tag -a -m "$RELSTR" ${BUILDVERSION}-${BUILDNUM}
+    git push origin tag ${BUILDVERSION}-${BUILDNUM}
+else
+    RELSTR="Tracking Application v${BUILDVERSION} DEV Build ${BUILDNUM}"
+    echo $RELSTR > $product.rel
+    #
+    # local tag only
+    #
+    git tag ${BUILDVERSION}-${BUILDNUM}
+fi
