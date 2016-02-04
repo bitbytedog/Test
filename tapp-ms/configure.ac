@@ -15,5 +15,4 @@ AC_PROG_CXX
 
 AC_CONFIG_FILES([
 	Makefile])
-AC_CONFIG_SUBDIRS([tapp-ms])
 AC_OUTPUT
