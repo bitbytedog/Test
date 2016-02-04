@@ -470,7 +470,7 @@ if test x$release != x ; then
         die "invalid release string $release\nUse x.y.z where x,y, and z and integers"
     fi
 
-    info "checking current branch is master ..."
+    info "checking current branch is master ...\n"
 
     git branch | while read line
     do
@@ -480,13 +480,13 @@ if test x$release != x ; then
         esac
     done || exit 1
 
-    info "checking for clean workspace ..."
+    info "checking for clean workspace ...\n"
     require_clean_work_tree release
 
-    info "checking for commits that haven't been pushed to origin/master ..."
+    info "checking for commits that haven't been pushed to origin/master ...\n"
     require_changes_pushed release
 
-    info "setting version $release in VERSION, configure.ac and tapp-ms/configure.ac files"
+    info "setting version $release in VERSION, configure.ac and tapp-ms/configure.ac files\n"
 
     trap "rm -f VERSION.$$ APK_VERSION.$$ configure.ac.$$ tapp-ms/configure.ac.$$" EXIT
     echo $release > VERSION.$$
@@ -494,7 +494,7 @@ if test x$release != x ; then
     cat tapp-ms/configure.ac | sed "/^AC_INIT/s/,.*/, [$release])/" > tapp-ms/configure.ac.$$
 
     APK_VERSION=`cat APK_VERSION`
-    info "setting APK version code to `expr $APK_VERSION + 1`"
+    info "setting APK version code to `expr $APK_VERSION + 1`\n"
     expr $APK_VERSION + 1 > APK_VERSION.$$
 
 
@@ -508,20 +508,20 @@ if test x$release != x ; then
     mv configure.ac.$$ configure.ac
     mv tapp-ms/configure.ac.$$ tapp-ms/configure.ac
 
-    info "adding version file changes to local git repo"
+    info "adding version file changes to local git repo\n"
     git add VERSION APK_VERSION configure.ac tapp-ms/configure.ac
 
     RELSTR="Release Tracking Application v${VERSION}"
 
-    info "committing changes to git repo: $RELSTR"
+    info "committing changes to git repo: $RELSTR\n"
     git commit -m "$RELSTR"
-    info "pushing changes to remote git repo"
-    git push
-    info "creating local branch $release"
+    info "pushing changes to remote git repo\n"
+    git push -q || die "unable to push repo"
+    info "creating local branch $release\n" 
     git checkout -b $release
-    info "pushing local branch $release to remote branch origin/$release and setting up remote branch tracking"
-    git push -u origin $release
-    info "returning local repo to master branch"
+    info "pushing local branch $release to remote branch origin/$release and setting up remote branch tracking\n"
+    git push -q -u origin $release || die unable to push remote branch"
+    info "returning local repo to master branch\n"
     git checkout master
 fi
 
