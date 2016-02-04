@@ -520,7 +520,7 @@ if test x$release != x ; then
     info "creating local branch $release\n" 
     git checkout -b $release
     info "pushing local branch $release to remote branch origin/$release and setting up remote branch tracking\n"
-    git push -q -u origin $release || die unable to push remote branch"
+    git push -q -u origin $release || die "unable to push remote branch"
     info "returning local repo to master branch\n"
     git checkout master
 fi
