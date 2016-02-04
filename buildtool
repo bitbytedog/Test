@@ -429,9 +429,9 @@ if test x$release != x ; then
     cat configure.ac | sed "/^AC_INIT/s/,.*/, [$release])/" > configure.ac.$$
     cat tapp-ms/configure.ac | sed "/^AC_INIT/s/,.*/, [$release])/" > tapp-ms/configure.ac.$$
 
-    grep -q $version VERSION.$$ || die "creating VERSION file failed"
-    grep -q "AC_INIT(.*, \[$version\])" configure.ac.$$ || die "setting VERSION in configure.ac failed"
-    grep -q "AC_INIT(.*, \[$version\])" tapp-ms/configure.ac.$$ || die "setting VERSION in tapp-ms/configure.ac failed"
+    grep -q $release VERSION.$$ || die "creating VERSION file $release failed"
+    grep -q "AC_INIT(.*, \[$release\])" configure.ac.$$ || die "setting VERSION $release in configure.ac failed"
+    grep -q "AC_INIT(.*, \[$release\])" tapp-ms/configure.ac.$$ || die "setting VERSION $release in tapp-ms/configure.ac failed"
 fi
 
 if test x$pristine = xyes ; then
