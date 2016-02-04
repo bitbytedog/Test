@@ -132,6 +132,9 @@ do
 
   case $ac_option in
 
+  -build | --build | --buil | --bui | --bu | --b | -b)
+    build=yes ; ac_option="" ;;
+
   -configure | --configure | --configur | --configu | --config | --confi \
   | --conf | --con | --co | -C )
     configure=yes ; ac_option="" ;;
@@ -158,6 +161,9 @@ do
   -help | --help | --hel | --he | -h)
     ac_init_help=long ;;
 
+  -list-builds | --list-builds | --list-build | --list-buil | --list-bui | --list-bu | --list-b )
+    list_builds=yes ; ac_option="" ;;
+
   -log | --log | --lo | --l | -l )
     ac_prev=logfile ; ac_option="" ;;
 
@@ -173,25 +179,34 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
-  -u | -update | --update | --updat | --upda | --upd | --up | --u)
-    ac_prev=update ; ac_option="" ;;
+  -tag-current | --tag-current | --tag-curren | --tag-curre | --tag-curr | --tag-cur | --tag-cu | --tag-c)
+    tag_current=yes ; ac_option="" ;;
 
-  -update=* | --update=* | --updat=* | --upda=* | --upd=* | --up=* | --u=*)
-    update=$ac_optarg ; ac_option="" ;;
+  -tag-build | --tag-build | --tag-buil | --tag-bui | --tag-bu | --tag-b)
+    ac_option="" ; ac_prev=tag_build ;;
+
+  -tag-build=* | --tag-build=* | --tag-buil=* | --tag-bui=* | --tag-bu=* | --tag-b=*)
+    tag_build=$ac_optarg ; ac_option="" ;;
+
+  -test | --test | --tes | --te | --t | -t)
+    testing=yes ;;
 
   -R | -release | --release | --release | --releas | --relea | --rele | --rel | --re | --r )
     ac_option="" ; ac_prev=release ;;
   -release=* | --release=* | --releas=* | --relea=* | --rele=* | --rel=* | --re=* | --r=*)
     ac_option="" ; release=$ac_optarg ;;
 
+  -u | -update | --update | --updat | --upda | --upd | --up | --u)
+    ac_prev=update ; ac_option="" ;;
+
+  -update=* | --update=* | --updat=* | --upda=* | --upd=* | --up=* | --u=*)
+    update=$ac_optarg ; ac_option="" ;;
+
   -v | -verbose | --verbose | --verbos | --verbo | --verb)
     verbose=yes ; ac_option="" ;;
 
   -version | --version | --versio | --versi | --vers | -V)
     version=yes ;;
-
-  -test | --test | --tes | --te | --t | -t)
-    testing=yes ;;
 
   -x | -xset | --xset | --xse | --xs | --x )
     xset=yes ; ac_option="" ;;
@@ -239,6 +254,7 @@ Defaults for the options are specified in brackets.
 
 Configuration:
   -h, --help               display this help and exit
+  -b, --build              invoke a tagged build, used to build a production release, increments build number
   -c, --clean              invoke make to clean last build
   -C, --configure          invoke "configure" script to create architecture
                            specific build tree, "Makefile" and makefile
@@ -247,6 +263,7 @@ Configuration:
   -g, --generate           create autotool "Makefile.in" templates,
                            "config.h.in" template and "configure" script.
   -i, --install            invoke "make" to install artifacts
+      --list-builds        list builds for current release
   -l FILE, --log=FILE      copy output to log FILE
   -m, --make               invoke "make" to build artifacts
   -P, --pristine           invoke make to remove all generated files
@@ -260,6 +277,8 @@ Configuration:
                            Necessary files are updated, and commited,
                            a branch is created and pushed to the master.
                            The local repo remains on the master branch.
+      --tag-current        Promotes the current build number to an annotated tag in the origin repository
+      --tag-build=BUILDNUM Promotes the build number BUILDNUM to an annotated tag in the origin repository
   -v, --verbose            very verbose tracing
   -V, --version            display version information and exit
   -q, --quiet, --silent    do not print \`checking...' messages
@@ -274,7 +293,10 @@ NOTES:
     To allow for unattended operation set the remote repo username and password
     into the git config file with the following commands:
 
-    Builds are only tagged locally
+    Builds are only tagged locally and have to be promoted to an annotated tag to record
+    them in the origin repository. use
+        $progname --tag-c or $progname --tag-b=BUILDNUM
+    to promote build tags.
 
 CURRENT GIT CONFIG:
 
@@ -293,6 +315,40 @@ fi
 
 #===================================================================
 # git porcelain
+
+require_tag_exists () {
+    git rev-parse $1 >/dev/null 2>&1
+    return $?
+}
+
+require_master_branch () {
+    git branch | while read line
+    do
+        case $line in
+            \*\ \(HEAD\ detached*) return 1;;
+            \*\ master) return 0 ;;
+            \*\ *) return 1;;
+        esac
+    done
+    return $?
+}
+
+require_version_branch () {
+    mybranch=
+    git branch | while read line
+    do
+        case $line in
+            \*\ \(HEAD\ detached*) return 1;;
+            \*\ *)
+                mybranch=${line#\*\ }
+                test x$mybranch != x -a x$mybranch = x$1
+                return $?
+                ;;
+        esac
+    done
+
+    return $?
+}
 
 require_clean_work_tree () {
     # Update the index
@@ -394,23 +450,35 @@ if test x$pristine = xyes ; then
     fi
 fi
 
+if test x$tag_current = xyes ; then
+    tag_build=`cat .buildnum`
+fi
+
 configure_ac="./configure.ac"
 
 autotool_file_artifacts="
-    $topdir/aclocal.m4
-    $topdir/configure
-    $topdir/Makefile.in
-    $topdir/config.h.in
-    $topdir/config.h.in~
+    aclocal.m4
+    configure
+    Makefile.in
+    config.h.in
+    config.h.in~
+    confdefs.h
+    config.log
 "
 
 autotool_dir_artifacts="
-    $topdir/autom4te.cache
-    $topdir/m4
-    $topdir/config
+    autom4te.cache
+    m4
+    config
 "
 
 if test -f ${configure_ac}; then
+    if test x$build = xyes ; then
+        if test ! -f Makefile ; then
+            install=yes
+        fi
+    fi
+
     if test x$install = xyes ; then
         if test ! -f Makefile ; then
             make=yes
@@ -452,6 +520,32 @@ if test x$generate = xyes ; then
     fi
 fi
 
+BUILDVERSION=`cat VERSION`
+export BUILDVERSION
+
+if test x$build = xyes ; then
+    info "checking current branch is $BUILDVERSION ...\n"
+
+    require_version_branch $BUILDVERSION || die "official builds can only be done on a release branch"
+
+    #
+    # Create a unique build number
+    BUILDNUM=0
+    if test -f .buildnum ; then
+        BUILDNUM=`cat .buildnum`
+    fi
+    BUILDNUM=`expr $BUILDNUM + 1`
+    echo $BUILDNUM > .buildnum
+    export BUILDNUM
+
+    RELSTR="Tracking Application v${BUILDVERSION} Local Build ${BUILDNUM}"
+    echo $RELSTR > $product.rel
+    #
+    # local tag only
+    #
+    git tag -a -m "$RELSTR" ${BUILDVERSION}-${BUILDNUM}
+fi
+
 if test x$configure = xyes ; then
     eval $CONFIG_SHELL ./configure $ac_argv $CONFIG_OPTS || die configure
 fi
@@ -472,13 +566,7 @@ if test x$release != x ; then
 
     info "checking current branch is master ...\n"
 
-    git branch | while read line
-    do
-        case $line in
-        \*\ master) break ;;
-        \*\ *) die "repository is currently on the branch ${line#\*\ }\nReleasing can only be done from the master" ;;
-        esac
-    done || exit 1
+    require_master_branch  || die "releasing can only be done from the master branch"
 
     info "checking for clean workspace ...\n"
     require_clean_work_tree release
@@ -519,19 +607,70 @@ if test x$release != x ; then
     git push -q || die "unable to push repo"
     info "creating local branch $release\n" 
     git checkout -b $release
+    trap "git checkout master" EXIT
     info "pushing local branch $release to remote branch origin/$release and setting up remote branch tracking\n"
     git push -q -u origin $release || die "unable to push remote branch"
     info "returning local repo to master branch\n"
     git checkout master
 fi
 
+if test x$tag_build != x ; then
+    info "checking current branch is $BUILDVERSION ...\n"
+
+    require_version_branch $BUILDVERSION || die "build tagging can only be done on the matching release branch"
+
+    info "checking build tag ${BUILDVERSION}-$tag_build exists in local repo\n"
+
+    require_tag_exists ${BUILDVERSION}-$tag_build || die "build tag ${BUILDVERSION}-$tag_build does not exist"
+
+    git checkout -q ${BUILDVERSION}-$tag_build
+    trap "git checkout -q $BUILDVERSION" EXIT
+
+    info "tagging build $tag_build\n"
+
+    git tag -d ${BUILDVERSION}-$tag_build > /dev/null
+
+    RELSTR="Tracking Application v${BUILDVERSION} Production Build ${tag_build}"
+    echo $RELSTR > $product.rel
+    #
+    # Annotated tag pushed to origin
+    #
+    git tag -a -m "$RELSTR" ${BUILDVERSION}-${tag_build}
+    git push -q origin tag ${BUILDVERSION}-${tag_build}
+
+fi
+
+if test x$list_builds != x ; then
+    info "listing local and origin build tags\n"
+
+    echo "\nLocal Builds for release $BUILDNUM:"
+    echo "-----------------------------------------------------------"
+    git tag -n99 | grep "v$BUILDVERSION Local"
+
+    echo "\nProduction Builds for release $BUILDNUM:"
+    echo "-----------------------------------------------------------"
+    git tag -n99 | grep "v$BUILDVERSION Production"
+
+    echo "\nProduction builds are tagged in the origin repository"
+    echo "use $progname --tag-b=BUILDNUM to upgrade a local build to a production build\n"
+fi
+
 if test x$pristine = xyes ; then
-    test -f Makefile || die "No Makefile, run --configure before --pristine"
-    $MAKE distclean
-    rm -rf $autotool_dir_artifacts
-    rm -f $autotool_file_artifacts
+    test -f Makefile && {
+        $MAKE distclean
+    }
+    (
+        cd $topdir
+        rm -rf $autotool_dir_artifacts
+        rm -f $autotool_file_artifacts
+    )
+    (
+        cd $topdir/tapp-ms
+        rm -rf $autotool_dir_artifacts
+        rm -f $autotool_file_artifacts
+    )
     find $topdir -name Makefile.in -exec rm -f {} \;
-    rm $product.rel
+    rm -f $topdir/$product.rel
     exit 0
 fi
 
@@ -541,32 +680,4 @@ if test x$clean = xyes ; then
     exit 0
 fi
 
-#
-# Create a unique build number
-BUILDNUM=0
-if test -f .buildnum ; then
-    BUILDNUM=`cat .buildnum`
-fi
-BUILDNUM=`expr $BUILDNUM + 1`
-echo $BUILDNUM > .buildnum
-export BUILDNUM
-
-BUILDVERSION=`cat VERSION`
-export BUILDVERSION
-
-if test x$opt_r = xyes ; then
-    RELSTR="Tracking Application v${BUILDVERSION} Build ${BUILDNUM}"
-    echo $RELSTR > $product.rel
-    #
-    # Annotated tag pushed to origin
-    #
-    git tag -a -m "$RELSTR" ${BUILDVERSION}-${BUILDNUM}
-    git push origin tag ${BUILDVERSION}-${BUILDNUM}
-else
-    RELSTR="Tracking Application v${BUILDVERSION} DEV Build ${BUILDNUM}"
-    echo $RELSTR > $product.rel
-    #
-    # local tag only
-    #
-    git tag ${BUILDVERSION}-${BUILDNUM}
-fi
+exit 0
