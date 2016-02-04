@@ -496,14 +496,14 @@ if test x$release != x ; then
     grep -q $release VERSION.$$ || die "creating VERSION file $release failed"
     grep -q "AC_INIT(.*, \[$release\])" configure.ac.$$ || die "setting VERSION $release in configure.ac failed"
     grep -q "AC_INIT(.*, \[$release\])" tapp-ms/configure.ac.$$ || die "setting VERSION $release in tapp-ms/configure.ac failed"
-    test `expr $APK_VERSION + 1` = `cat APK_VERSION` || die "setting APK_VERSION"
+    test `expr $APK_VERSION + 1` = `cat APK_VERSION.$$` || die "setting APK_VERSION"
 
 exit 0
     mv VERSION.$$ VERSION
     mv APK_VERSION.$$ APK_VERSION
     mv configure.ac.$$ configure.ac
     mv tapp-ms/configure.ac.$$ tapp-ms/configure.ac
-    git add VERSION configure.ac tapp-ms/configure.ac
+    git add VERSION APK_VERSION configure.ac tapp-ms/configure.ac
 
     RELSTR="Release Tracking Application v${VERSION}"
 
