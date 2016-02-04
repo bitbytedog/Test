@@ -424,7 +424,7 @@ if test x$release != x ; then
     info "checking for commits that haven't been pushed to origin/master ..."
     require_changes_pushed release
 
-    trap "rm -f VERSION.$$" EXIT
+    trap "rm -f VERSION.$$ configure.ac.$$ tapp-ms/configure.ac.$$" EXIT
     echo $release > VERSION.$$
     cat configure.ac | sed "/^AC_INIT/s/,.*/, [$release])/" > configure.ac.$$
     cat tapp-ms/configure.ac | sed "/^AC_INIT/s/,.*/, [$release])/" > tapp-ms/configure.ac.$$
