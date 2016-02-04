@@ -41,6 +41,64 @@ info ()
     $ECHO_E $progname: "$@" >&1
 }
 
+
+case `uname` in
+    Darwin)
+        CREDHELPER=osxkeychain
+        ;;
+    *)
+        git config --global credential.helper store
+        CREDHELPER=`git config --global --get credential.helper`
+        ;;
+esac
+
+gitusername=`git config --global --get user.name`
+
+if test x"$gitusername" == x ; then
+    allok=no
+    while test $allok = "no" ; do
+        echo "We need to set up git first"
+        ok=no
+        while test $ok = "no" ; do
+            read -p "Please enter your real name - for example \"John Doe\" > " gitusername
+            while true; do
+                read -p  "Set name to \"$gitusername\"? [yes|no] > " yn
+                case $yn in
+                    [Yy]*) ok=yes ; break;;
+                    [Nn]*) continue;;
+                        *) echo "yes or no";;
+                esac
+            done
+        done
+        ok=no
+        while test $ok = "no" ; do
+            read -p  "Please enter your email address - for example \"John.Doe@example.com\" > " gituseremail
+            while true; do
+                read -p  "Set email to \"$gituseremail\"? [yes|no] > " yn
+                case $yn in
+                    [Yy]*) ok=yes ; break;;
+                    [Nn]*) continue;;
+                    *) echo "yes or no";;
+                esac
+            done
+        done
+
+        echo "User Name               : $gitusername"
+        echo "User Email              : $gituseremail"
+        while true; do
+            read -p  "OK to set name and email? [yes|no] > " yn
+            case $yn in
+                [Yy]*) allok=yes ; break;;
+                [Nn]*) continue;;
+                *) echo "yes or no";;
+            esac
+        done
+    done
+
+    git config --global user.name "$gitusername"
+    git config --global user.email "$gituseremail"
+fi
+
 progname=`basename $0`
 topdir=`dirname $0`
 topdir=`cd $topdir && pwd`
@@ -167,6 +225,7 @@ fi
 if test "$ac_init_help" = "long"; then
   # Omit some internal or obsolete options to make the list less imposing.
   # This message is too long to be a string in the A/UX 3.1 sh.
+
   cat <<_ACEOF
 
 \`$progname' $product application build system
@@ -215,15 +274,18 @@ NOTES:
     To allow for unattended operation set the remote repo username and password
     into the git config file with the following commands:
 
-        git config --global user.name "Your Name Here"
-        git config --global user.email "GitHub User Email Here"
-        git config --global credential.helper cache
-        git config --global credential.helper 'cache --timeout=31536000'
+    Builds are only tagged locally
 
-    The passord you use to clone or update the repo will be cached for 1yr
-    allowing the build.sh to tag future release builds.
+CURRENT GIT CONFIG:
 
-    DEV builds are only tagged locally
+    User Name               : `git config --get user.name`
+    User Email              : `git config --get user.email`
+    Credential Helper       : $CREDHELPER
+
+    The passord you use to clone or update the repo will be stored in the file ~/.git-credentials.
+    it will be asked for once the first time and then reused after that. If you change your github
+    password, you will need to change it in the cache store.
+
 __EOF
 
     exit 1
@@ -424,14 +486,32 @@ if test x$release != x ; then
     info "checking for commits that haven't been pushed to origin/master ..."
     require_changes_pushed release
 
-    trap "rm -f VERSION.$$ configure.ac.$$ tapp-ms/configure.ac.$$" EXIT
+    trap "rm -f VERSION.$$ APK_VERSION.$$ configure.ac.$$ tapp-ms/configure.ac.$$" EXIT
     echo $release > VERSION.$$
     cat configure.ac | sed "/^AC_INIT/s/,.*/, [$release])/" > configure.ac.$$
     cat tapp-ms/configure.ac | sed "/^AC_INIT/s/,.*/, [$release])/" > tapp-ms/configure.ac.$$
+    APK_VERSION=`cat APK_VERSION`
+    expr $APK_VERSION + 1 > APK_VERSION.$$
 
     grep -q $release VERSION.$$ || die "creating VERSION file $release failed"
     grep -q "AC_INIT(.*, \[$release\])" configure.ac.$$ || die "setting VERSION $release in configure.ac failed"
     grep -q "AC_INIT(.*, \[$release\])" tapp-ms/configure.ac.$$ || die "setting VERSION $release in tapp-ms/configure.ac failed"
+    test `expr $APK_VERSION + 1` = `cat APK_VERSION` || die "setting APK_VERSION"
+
+exit 0
+    mv VERSION.$$ VERSION
+    mv APK_VERSION.$$ APK_VERSION
+    mv configure.ac.$$ configure.ac
+    mv tapp-ms/configure.ac.$$ tapp-ms/configure.ac
+    git add VERSION configure.ac tapp-ms/configure.ac
+
+    RELSTR="Release Tracking Application v${VERSION}"
+
+    git commit -m "$RELSTR"
+    git checkout -b $VERSION
+    git push -u origin $VERSION
+    git checkout master
+
 fi
 
 if test x$pristine = xyes ; then
