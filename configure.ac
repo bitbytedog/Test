@@ -1,4 +1,4 @@
-AC_INIT([tapp], [0.0.3])
+AC_INIT([tapp], [0.0.5])
 
 RELVER=`cat VERSION`
 if test x$PACKAGE_VERSION != x$RELVER ; then
