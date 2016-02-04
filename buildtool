@@ -486,32 +486,41 @@ if test x$release != x ; then
     info "checking for commits that haven't been pushed to origin/master ..."
     require_changes_pushed release
 
+    info "setting version $release in VERSION, configure.ac and tapp-ms/configure.ac files"
+
     trap "rm -f VERSION.$$ APK_VERSION.$$ configure.ac.$$ tapp-ms/configure.ac.$$" EXIT
     echo $release > VERSION.$$
     cat configure.ac | sed "/^AC_INIT/s/,.*/, [$release])/" > configure.ac.$$
     cat tapp-ms/configure.ac | sed "/^AC_INIT/s/,.*/, [$release])/" > tapp-ms/configure.ac.$$
+
     APK_VERSION=`cat APK_VERSION`
+    info "setting APK version code to `expr $APK_VERSION + 1`"
     expr $APK_VERSION + 1 > APK_VERSION.$$
+
 
     grep -q $release VERSION.$$ || die "creating VERSION file $release failed"
     grep -q "AC_INIT(.*, \[$release\])" configure.ac.$$ || die "setting VERSION $release in configure.ac failed"
     grep -q "AC_INIT(.*, \[$release\])" tapp-ms/configure.ac.$$ || die "setting VERSION $release in tapp-ms/configure.ac failed"
     test `expr $APK_VERSION + 1` = `cat APK_VERSION.$$` || die "setting APK_VERSION"
 
-exit 0
     mv VERSION.$$ VERSION
     mv APK_VERSION.$$ APK_VERSION
     mv configure.ac.$$ configure.ac
     mv tapp-ms/configure.ac.$$ tapp-ms/configure.ac
+
+    info "adding version file changes to local git repo"
     git add VERSION APK_VERSION configure.ac tapp-ms/configure.ac
 
     RELSTR="Release Tracking Application v${VERSION}"
 
+    info "committing changes to git repo: $RELSTR"
     git commit -m "$RELSTR"
+    info "creating branch $release"
     git checkout -b $VERSION
+    info "pushing branch $release to remote branch origin/$release and setting up remote tracking"
     git push -u origin $VERSION
+    info "returning local repo to master branch"
     git checkout master
-
 fi
 
 if test x$pristine = xyes ; then
