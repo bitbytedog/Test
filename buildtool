@@ -515,10 +515,12 @@ if test x$release != x ; then
 
     info "committing changes to git repo: $RELSTR"
     git commit -m "$RELSTR"
-    info "creating branch $release"
-    git checkout -b $VERSION
-    info "pushing branch $release to remote branch origin/$release and setting up remote tracking"
-    git push -u origin $VERSION
+    info "pushing changes to remote git repo"
+    git push
+    info "creating local branch $release"
+    git checkout -b $release
+    info "pushing local branch $release to remote branch origin/$release and setting up remote branch tracking"
+    git push -u origin $release
     info "returning local repo to master branch"
     git checkout master
 fi
