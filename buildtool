@@ -511,10 +511,10 @@ if test x$release != x ; then
     info "adding version file changes to local git repo\n"
     git add VERSION APK_VERSION configure.ac tapp-ms/configure.ac
 
-    RELSTR="Release Tracking Application v${VERSION}"
+    RELSTR="Release Tracking Application v${release}"
 
     info "committing changes to git repo: $RELSTR\n"
-    git commit -m "$RELSTR"
+    git commit -q -m "$RELSTR"
     info "pushing changes to remote git repo\n"
     git push -q || die "unable to push repo"
     info "creating local branch $release\n" 
