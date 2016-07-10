@@ -1,6 +1,5 @@
 AC_INIT([tapp], [0.0.7])
 
-
 RELVER=`cat VERSION`
 if test x$PACKAGE_VERSION != x$RELVER ; then
     AC_MSG_ERROR([the version number in configure.ac ($PACKAGE_VERSION) does not match the version in VERSION ($RELVER)])
